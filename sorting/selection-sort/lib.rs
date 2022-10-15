@@ -9,7 +9,7 @@ impl Sorter for SelectionSort {
 }
 
 fn sort<T: Ord>(xs: &mut [T]) {
-    for i in 0..(xs.len() - 1) {
+    for i in 0..xs.len().checked_sub(1).unwrap_or(0) {
         let mut min = i;
         for j in (i + 1)..xs.len() {
             if &xs[min] > &xs[j] {
