@@ -1,0 +1,11 @@
+[package]
+name = "insertion-sort-smart"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+collapse = { path = "../../utils/collapse" }
+sorter = { path = "../sorter" }

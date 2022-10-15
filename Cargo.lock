@@ -10,9 +10,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "collapse"
+version = "0.1.0"
+
+[[package]]
 name = "insertion-sort"
 version = "0.1.0"
 dependencies = [
+ "sorter",
+]
+
+[[package]]
+name = "insertion-sort-smart"
+version = "0.1.0"
+dependencies = [
+ "collapse",
  "sorter",
 ]
 
