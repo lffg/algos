@@ -3,6 +3,13 @@
 version = 3
 
 [[package]]
+name = "bubble-sort"
+version = "0.1.0"
+dependencies = [
+ "sorter",
+]
+
+[[package]]
 name = "insertion-sort"
 version = "0.1.0"
 dependencies = [
