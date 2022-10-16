@@ -104,11 +104,16 @@ impl<T, K> Heap<T, K> {
     /// returns its new index, otherwise no operation is performed.
     pub fn swap_parent(&mut self, index: usize) -> Option<usize> {
         self.parent_index(index)?
-            .map(|parent| {
-                self.data.swap(parent, index);
-                parent
-            })
+            .map(|parent| self.swap(index, parent))
             .ok()
+    }
+
+    /// Swaps the first index with the second, returning the second index.
+    ///
+    /// This method panics if the given indexes are out of bounds.
+    pub fn swap(&mut self, base: usize, new_cursor: usize) -> usize {
+        self.data.swap(base, new_cursor);
+        new_cursor
     }
 }
 
@@ -135,7 +140,7 @@ where
     pub fn insert(&mut self, value: T) {
         let mut child_i = self.put(value);
         while let Some((child, parent)) = self.get_child_parent_pair(child_i) {
-            if !K::should_swap(child, parent) {
+            if !K::is_higher(child, parent) {
                 break;
             }
             // SAFETY: If one has just compared the child with its parent, both
@@ -143,5 +148,52 @@ where
             // `None`). Hence, the `unwrap` will never panic.
             child_i = self.swap_parent(child_i).unwrap();
         }
+    }
+
+    /// Removes the root.
+    pub fn pop(&mut self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
+        // Swap the root with the last element so that one may pop the root.
+        let last = self.len() - 1;
+        self.swap(0, last);
+        // SAFETY: One has already checked if the heap is empty before.
+        let root = unsafe { self.data.pop().unwrap_unchecked() };
+
+        let mut current_i = 0;
+        loop {
+            let (l, r) = self.children_indexes(current_i);
+            let left = match self.get(l) {
+                Some(val) => val,
+                // If there is no `left` child, there is nothing to swap.
+                None => {
+                    break;
+                }
+            };
+            let right = match self.get(r) {
+                Some(val) => val,
+                None => {
+                    // If the current node doesn't have a right child, then one
+                    // should only swap it if the child is greater than the
+                    // parent.
+                    if K::is_higher(left, self.get(current_i).unwrap()) {
+                        current_i = self.swap(current_i, l);
+                    } else {
+                        current_i = l;
+                    }
+                    continue;
+                }
+            };
+            // If the current node has both children, one uses `is_higher` to
+            // determine which of them should be placed higher in the tree.
+            if K::is_higher(left, right) {
+                current_i = self.swap(current_i, l);
+            } else {
+                current_i = self.swap(current_i, r);
+            }
+        }
+
+        Some(root)
     }
 }
