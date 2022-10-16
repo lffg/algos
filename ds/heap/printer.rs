@@ -4,9 +4,9 @@ use crate::Heap;
 
 pub const INDENT_SIZE: usize = 4;
 
-pub struct HeapPrinter<'a, T>(pub &'a Heap<T>);
+pub struct HeapPrinter<'a, T, K>(pub &'a Heap<T, K>);
 
-impl<'a, T> Display for HeapPrinter<'a, T>
+impl<'a, T, K> Display for HeapPrinter<'a, T, K>
 where
     T: Debug,
 {
@@ -21,7 +21,7 @@ where
 }
 
 // ─ │ ┐ ┘ ┌ └ ├ ┤ ┬ ┴ ┼
-fn go<T>(f: &mut Formatter<'_>, heap: &Heap<T>, index: usize) -> Result
+fn go<T, K>(f: &mut Formatter<'_>, heap: &Heap<T, K>, index: usize) -> Result
 where
     T: Debug,
 {
@@ -30,7 +30,7 @@ where
         None => return Ok(()),
     };
 
-    let depth_0 = Heap::<T>::depth_at(index) - 1;
+    let depth_0 = Heap::<T, ()>::depth_at(index) - 1;
     repeat(f, ' ', depth_0 * INDENT_SIZE)?;
     writeln!(f, "{val:?}")?;
     assert_eq!(format!("Hello {:>5}!", "x"), "Hello     x!");

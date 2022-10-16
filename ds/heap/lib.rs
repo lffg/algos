@@ -1,17 +1,25 @@
-use std::cmp::Ordering;
+use std::marker::PhantomData;
 
+/// Heap printing utilities.
 pub mod printer;
+
+mod kind;
+pub use kind::{Max, Min};
 
 /// Maximum heap.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Heap<T> {
+pub struct Heap<T, K> {
     data: Vec<T>,
+    _kind: PhantomData<K>,
 }
 
-impl<T> Heap<T> {
+impl<T, K> Heap<T, K> {
     /// Returns a new heap.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            data: Vec::new(),
+            _kind: PhantomData,
+        }
     }
 
     /// Returns the heap length (quantity of elements).
@@ -69,7 +77,7 @@ impl<T> Heap<T> {
     /// parent exist.
     pub fn parent(&self, index: usize) -> Option<&T> {
         self.parent_index(index)?
-            // SAFETY: If the child exists, so does its parent.
+            // SAFETY: If the child exists (`Ok` variant), so does its parent.
             .map(|parent| unsafe { self.data.get_unchecked(parent) })
             .ok()
     }
@@ -98,13 +106,16 @@ impl<T> Heap<T> {
     }
 }
 
-impl<T: Ord> Heap<T> {
-    /// Compares the children with its parent.
-    fn compare_with_parent(&mut self, index: usize) -> Option<Ordering> {
+impl<T, K> Heap<T, K>
+where
+    T: Ord,
+    K: kind::HeapKind,
+{
+    fn get_child_parent_pair(&mut self, index: usize) -> Option<(&T, &T)> {
         let parent = self.parent(index)?;
         // SAFETY: If `parent` exists, so does the child.
         let child = unsafe { self.data.get_unchecked(index) };
-        Some(child.cmp(parent))
+        Some((child, parent))
     }
 
     /// Puts the given value and returns the inserted-to index.
@@ -117,17 +128,14 @@ impl<T: Ord> Heap<T> {
     /// Inserts the given element on its appropriate heap position.
     pub fn insert(&mut self, value: T) {
         let mut child_i = self.put(value);
-        while matches!(self.compare_with_parent(child_i), Some(Ordering::Greater)) {
+        while let Some((child, parent)) = self.get_child_parent_pair(child_i) {
+            if !K::should_swap(child, parent) {
+                break;
+            }
             // SAFETY: If one has just compared the child with its parent, both
-            // must exist (otherwise `compare_with_parent` would have returned
+            // must exist (otherwise `get_child_parent_pair` would have returned
             // `None`). Hence, the `unwrap` will never panic.
             child_i = self.swap_parent(child_i).unwrap();
         }
-    }
-}
-
-impl<T> Default for Heap<T> {
-    fn default() -> Self {
-        Self { data: Vec::new() }
     }
 }
