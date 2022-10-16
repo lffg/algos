@@ -29,6 +29,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-sort"
+version = "0.1.0"
+dependencies = [
+ "sorter",
+]
+
+[[package]]
 name = "selection-sort"
 version = "0.1.0"
 dependencies = [
