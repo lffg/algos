@@ -14,6 +14,17 @@ name = "collapse"
 version = "0.1.0"
 
 [[package]]
+name = "heap"
+version = "0.1.0"
+
+[[package]]
+name = "heap-example"
+version = "0.1.0"
+dependencies = [
+ "heap",
+]
+
+[[package]]
 name = "insertion-sort"
 version = "0.1.0"
 dependencies = [
