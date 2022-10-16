@@ -32,6 +32,12 @@ impl<T, K> Heap<T, K> {
         self.len() == 0
     }
 
+    /// Checks if the index is a valid leaf.
+    pub fn is_leaf(&self, index: usize) -> bool {
+        let len = self.len();
+        index < len && index >= len / 2
+    }
+
     /// Returns the "heap depth" at the given index.
     pub fn depth_at(index: usize) -> usize {
         let pos = index + 1;

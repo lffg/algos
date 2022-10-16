@@ -18,4 +18,20 @@ fn main() {
         h.insert(i);
         p(&h);
     }
+
+    println!("ancestors of element at index 5, including itself:");
+    for ancestor in ancestors(&h, 5) {
+        print!("({ancestor}) ");
+    }
+    println!();
+}
+
+fn ancestors<T, K>(heap: &Heap<T, K>, index: usize) -> impl Iterator<Item = &T> {
+    let mut maybe_current = Some(index);
+    std::iter::from_fn(move || {
+        let c = maybe_current?;
+        let el = heap.get(c)?;
+        maybe_current = heap.parent_index(c).and_then(Result::ok);
+        Some(el)
+    })
 }
