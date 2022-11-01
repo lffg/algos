@@ -1,199 +1,222 @@
-use std::marker::PhantomData;
-
-/// Heap printing utilities.
 pub mod printer;
 
-mod kind;
-pub use kind::{Max, Min};
-
-/// Maximum heap.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Heap<T, K> {
-    data: Vec<T>,
-    _kind: PhantomData<K>,
+/// Maximum heap implementation.
+///
+/// Use `std::order::Reverse` if you want a minimum heap behavior.
+pub struct Heap<T> {
+    inner: Vec<T>,
 }
 
-impl<T, K> Heap<T, K> {
-    /// Returns a new heap.
+impl<T> Heap<T> {
+    /// Constructs a new, empty, heap.
     pub fn new() -> Self {
-        Self {
-            data: Vec::new(),
-            _kind: PhantomData,
+        Self { inner: Vec::new() }
+    }
+
+    /// Returns the length of the heap.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Checks whether the heap is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Returns the element at the given position.
+    #[inline]
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.inner.get(index)
+    }
+}
+
+impl<T: Ord> Heap<T> {
+    /// Inserts the given value on the heap.
+    pub fn insert(&mut self, value: T) {
+        let mut c = self.put(value);
+        while c > 0 {
+            let parent = Self::parent(c);
+            if Self::is_higher(&self.inner[c], &self.inner[parent]) {
+                self.inner.swap(c, parent);
+                c = parent;
+            } else {
+                break;
+            }
         }
     }
 
-    /// Returns the heap length (quantity of elements).
-    pub fn len(&self) -> usize {
-        self.data.len()
+    /// Removes the maximum element.
+    pub fn remove(&mut self) -> Option<T> {
+        Self::logical_remove(&mut self.inner).then(|| self.inner.pop().unwrap())
     }
 
-    /// Checks if the heap is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+    /// Consumes the heap, returning an ordered vector.
+    pub fn sorted(self) -> Vec<T> {
+        let mut xs = self.inner;
+        let mut len = xs.len();
+        while len > 1 {
+            Self::logical_remove(&mut xs[..len]);
+            len -= 1;
+        }
+        xs
+    }
+}
+
+// Utilities
+impl<T> Heap<T> {
+    /// Inserts a new element at the end of the internal buffer and returns its
+    /// index.
+    #[inline]
+    fn put(&mut self, value: T) -> usize {
+        self.inner.push(value);
+        self.inner.len() - 1
     }
 
-    /// Checks if the index is a valid leaf.
-    pub fn is_leaf(&self, index: usize) -> bool {
-        let len = self.len();
-        index < len && index >= len / 2
+    /// Checks whether the element on the given `index` is a leaf in a heap with
+    /// the provided length.
+    #[inline]
+    fn is_leaf(len: usize, index: usize) -> bool {
+        index >= len / 2
     }
 
-    /// Returns the "heap depth" at the given index.
+    /// Checks whether the element on the given `index` has any children in a
+    /// heap with the provided length.
+    #[inline]
+    fn has_any_children(len: usize, index: usize) -> bool {
+        !Self::is_leaf(len, index)
+    }
+
+    /// Returns the theoretical depth at the given index.
+    #[inline]
     pub fn depth_at(index: usize) -> usize {
         let pos = index + 1;
         (pos as f64).log2().floor() as usize + 1
     }
 
-    /// Returns the depth of this heap.
-    pub fn depth(&self) -> usize {
-        if self.len() == 0 {
-            0
-        } else {
-            Self::depth_at(self.len() - 1)
-        }
-    }
-
-    /// Returns the value at the given index.
-    pub fn get(&self, index: usize) -> Option<&T> {
-        self.data.get(index)
-    }
-
-    /// Returns an optional reference to the root element.
-    pub fn root(&self) -> Option<&T> {
-        self.get(0)
-    }
-
-    /// Checks if the given index exists and, if so, returns its corresponding
-    /// parent index. Otherwise, returns the "parent index location" if the
-    /// child were to exist.
+    /// Returns the parent index of the node at the given index.
     ///
-    /// Returns none if the provided index is zero (i.e. the root).
-    pub fn parent_index(&self, index: usize) -> Option<Result<usize, usize>> {
-        (index != 0).then(|| {
-            let loc = (index - 1) / 2;
-            if index < self.len() {
-                Ok(loc)
-            } else {
-                Err(loc)
-            }
-        })
+    /// # Panics
+    ///
+    /// This may overflow if `0` is given.
+    #[inline]
+    fn parent(child: usize) -> usize {
+        (child - 1) / 2
     }
 
-    /// Returns the parent of the provided node index, if such node and its
-    /// parent exist.
-    pub fn parent(&self, index: usize) -> Option<&T> {
-        self.parent_index(index)?
-            // SAFETY: If the child exists (`Ok` variant), so does its parent.
-            .map(|parent| unsafe { self.data.get_unchecked(parent) })
-            .ok()
-    }
-
-    /// Returns the children indexes.
-    pub fn children_indexes(&self, index: usize) -> (usize, usize) {
+    /// Returns the indexes of the children of the node at the given index.
+    #[inline]
+    fn children_indexes(index: usize) -> (usize, usize) {
         let first = index * 2 + 1;
         (first, first + 1)
     }
+}
 
-    /// Returns optional references to the children of the given node index.
-    pub fn children(&self, index: usize) -> (Option<&T>, Option<&T>) {
-        let (a, b) = self.children_indexes(index);
-        (self.get(a), self.get(b))
+// Utilities
+impl<T: Ord> Heap<T> {
+    /// Checks whether the element on the left should be put higher on the heap
+    /// than the element on the right.
+    #[inline]
+    fn is_higher(a: &T, b: &T) -> bool {
+        a > b
     }
 
-    /// Swaps the child with its parent. If the child and the parent exist,
-    /// returns its new index, otherwise no operation is performed.
-    pub fn swap_parent(&mut self, index: usize) -> Option<usize> {
-        self.parent_index(index)?
-            .map(|parent| self.swap(index, parent))
-            .ok()
+    /// Logically removes the first (maximum) element, putting it on the inner
+    /// buffer's end, so that it may be _popped_ by high level callers.
+    fn logical_remove(xs: &mut [T]) -> bool {
+        if xs.is_empty() {
+            return false;
+        }
+
+        let last = xs.len() - 1;
+        xs.swap(0, last);
+
+        let mut parent = 0;
+        while let Some(child) = Self::highest_child(&xs[..last], parent) {
+            if Self::is_higher(&xs[child], &xs[parent]) {
+                xs.swap(child, parent);
+                parent = child;
+            } else {
+                break;
+            }
+        }
+
+        true
     }
 
-    /// Swaps the first index with the second, returning the second index.
-    ///
-    /// This method panics if the given indexes are out of bounds.
-    pub fn swap(&mut self, base: usize, new_cursor: usize) -> usize {
-        self.data.swap(base, new_cursor);
-        new_cursor
+    /// Returns the highest children of the node at the given index.
+    fn highest_child(xs: &[T], parent: usize) -> Option<usize> {
+        if !Self::has_any_children(xs.len(), parent) {
+            return None;
+        }
+
+        let l = 2 * parent + 1;
+        let r = l + 1;
+        let has_right_child = r < xs.len();
+
+        if !has_right_child || Self::is_higher(&xs[l], &xs[r]) {
+            Some(l)
+        } else {
+            // Small semantic note: if both children are equal, the `r` index
+            // is returned.
+            Some(r)
+        }
     }
 }
 
-impl<T, K> Heap<T, K>
-where
-    T: Ord,
-    K: kind::HeapKind,
-{
-    fn get_child_parent_pair(&mut self, index: usize) -> Option<(&T, &T)> {
-        let parent = self.parent(index)?;
-        // SAFETY: If `parent` exists, so does the child.
-        let child = unsafe { self.data.get_unchecked(index) };
-        Some((child, parent))
-    }
+#[cfg(test)]
+mod tests {
+    use super::{printer::HeapPrinter, Heap};
 
-    /// Puts the given value and returns the inserted-to index.
-    fn put(&mut self, value: T) -> usize {
-        self.data.push(value);
-        // This will never overflow:
-        self.len() - 1
-    }
-
-    /// Inserts the given element on its appropriate heap position.
-    pub fn insert(&mut self, value: T) {
-        let mut child_i = self.put(value);
-        while let Some((child, parent)) = self.get_child_parent_pair(child_i) {
-            if !K::is_higher(child, parent) {
-                break;
+    macro_rules! heap {
+        ($data:expr) => {
+            heap!($data, |x| x)
+        };
+        ($data:expr, $map:expr) => {{
+            let mut h = Heap::new();
+            for i in [2, 4, 5, 1, 3].into_iter().map($map) {
+                h.insert(i);
             }
-            // SAFETY: If one has just compared the child with its parent, both
-            // must exist (otherwise `get_child_parent_pair` would have returned
-            // `None`). Hence, the `unwrap` will never panic.
-            child_i = self.swap_parent(child_i).unwrap();
-        }
+            h
+        }};
     }
 
-    /// Removes the root.
-    pub fn pop(&mut self) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-        // Swap the root with the last element so that one may pop the root.
-        let last = self.len() - 1;
-        self.swap(0, last);
-        // SAFETY: One has already checked if the heap is empty before.
-        let root = unsafe { self.data.pop().unwrap_unchecked() };
+    #[test]
+    fn test_heap_sort() {
+        let h = heap!([2, 4, 5, 1, 3]);
 
-        let mut current_i = 0;
-        loop {
-            let (l, r) = self.children_indexes(current_i);
-            let left = match self.get(l) {
-                Some(val) => val,
-                // If there is no `left` child, there is nothing to swap.
-                None => {
-                    break;
-                }
-            };
-            let right = match self.get(r) {
-                Some(val) => val,
-                None => {
-                    // If the current node doesn't have a right child, then one
-                    // should only swap it if the child is greater than the
-                    // parent.
-                    if K::is_higher(left, self.get(current_i).unwrap()) {
-                        current_i = self.swap(current_i, l);
-                    } else {
-                        current_i = l;
-                    }
-                    continue;
-                }
-            };
-            // If the current node has both children, one uses `is_higher` to
-            // determine which of them should be placed higher in the tree.
-            if K::is_higher(left, right) {
-                current_i = self.swap(current_i, l);
-            } else {
-                current_i = self.swap(current_i, r);
-            }
-        }
+        let s = h.sorted();
+        assert_eq!(s, vec![1, 2, 3, 4, 5]);
+    }
 
-        Some(root)
+    #[test]
+    fn test_heap_sort_desc() {
+        use std::cmp::Reverse;
+        let h = heap!([2, 4, 5, 1, 3], |x| Reverse(x));
+
+        let s: Vec<_> = h.sorted().into_iter().map(|Reverse(x)| x).collect();
+        assert_eq!(s, vec![5, 4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn test_pretty_print() {
+        let mut h = Heap::new();
+        let mut f = Vec::new();
+        for i in [2, 4, 6, 1, 3, 5] {
+            h.insert(i);
+            f.push(HeapPrinter(&h).to_string());
+        }
+        assert_eq!(
+            f,
+            vec![
+                "2\n",
+                "4\n    2\n",
+                "6\n    2\n    4\n",
+                "6\n    2\n        1\n    4\n",
+                "6\n    3\n        1\n        2\n    4\n",
+                "6\n    3\n        1\n        2\n    5\n        4\n",
+            ]
+        );
     }
 }
