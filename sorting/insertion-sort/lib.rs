@@ -11,7 +11,7 @@ impl Sorter for InsertionSort {
 fn sort<T: Ord>(xs: &mut [T]) {
     for i in 1..xs.len() {
         let mut prev = i - 1;
-        while &xs[prev] > &xs[prev + 1] {
+        while xs[prev] > xs[prev + 1] {
             xs.swap(prev, prev + 1);
             if prev == 0 {
                 break;

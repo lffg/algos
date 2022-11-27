@@ -24,14 +24,13 @@ fn go<T>(f: &mut Formatter<'_>, heap: &Heap<T>, index: usize) -> Result
 where
     T: Debug,
 {
-    let val = match heap.get(index) {
-        Some(val) => val,
-        None => return Ok(()),
+    let Some(value) = heap.get(index) else {
+        return Ok(());
     };
 
     let depth_0 = Heap::<T>::depth_at(index) - 1;
     repeat(f, ' ', depth_0 * INDENT_SIZE)?;
-    writeln!(f, "{val:?}")?;
+    writeln!(f, "{value:?}")?;
 
     let (a, b) = Heap::<T>::children_indexes(index);
     go(f, heap, a)?;

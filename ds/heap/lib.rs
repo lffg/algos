@@ -10,7 +10,7 @@ pub struct Heap<T> {
 impl<T> Heap<T> {
     /// Constructs a new, empty, heap.
     pub fn new() -> Self {
-        Self { inner: Vec::new() }
+        Default::default()
     }
 
     /// Returns the length of the heap.
@@ -161,6 +161,14 @@ impl<T: Ord> Heap<T> {
             // Small semantic note: if both children are equal, the `r` index
             // is returned.
             Some(r)
+        }
+    }
+}
+
+impl<T> Default for Heap<T> {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
         }
     }
 }
