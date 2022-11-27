@@ -3,6 +3,10 @@
 version = 3
 
 [[package]]
+name = "binary-tree"
+version = "0.1.0"
+
+[[package]]
 name = "bubble-sort"
 version = "0.1.0"
 dependencies = [
