@@ -32,16 +32,19 @@ impl<T> BinaryTree<T> {
 
 impl<T: Ord> BinaryTree<T> {
     /// Inserts the given value on the BST.
-    pub fn insert(&mut self, value: T) {
+    ///
+    /// Returns `Err(T)` if the binary tree already contains the given value.
+    pub fn insert(&mut self, value: T) -> Result<(), T> {
         let Some(current) = &self.value else {
             self.value = Some(value);
-            return;
+            return Ok(());
         };
         let subtree = match value.cmp(current) {
-            Ordering::Less | Ordering::Equal => &mut self.left,
+            Ordering::Equal => return Err(value),
+            Ordering::Less => &mut self.left,
             Ordering::Greater => &mut self.right,
         };
-        subtree.get_or_insert_with(Default::default).insert(value);
+        subtree.get_or_insert_with(Default::default).insert(value)
     }
 
     /// Checks wether the given element exists in the tree.
@@ -80,7 +83,7 @@ mod tests {
         let mut h = BinaryTree::new();
         let mut f = Vec::new();
         for i in [2, 4, 6, 1, 3, 5] {
-            h.insert(i);
+            h.insert(i).unwrap();
             f.push(BinaryTreePrinter(&h).to_string());
         }
         assert_eq!(
@@ -105,7 +108,7 @@ mod tests {
     fn test_depth_balanced() {
         let mut h = BinaryTree::new();
         for i in [4, 2, 6, 1, 3, 5, 7] {
-            h.insert(i);
+            h.insert(i).unwrap();
         }
         assert_eq!(h.depth(), 3);
     }
@@ -114,7 +117,7 @@ mod tests {
     fn test_depth_unbalanced() {
         let mut h = BinaryTree::new();
         for i in [1, 2, 3, 4, 5, 6, 7] {
-            h.insert(i);
+            h.insert(i).unwrap();
         }
         assert_eq!(h.depth(), 7);
     }
@@ -123,7 +126,7 @@ mod tests {
     fn test_contains() {
         let mut h = BinaryTree::new();
         for i in [4, 2, 6, 1, 3, 5, 7] {
-            h.insert(i);
+            h.insert(i).unwrap();
         }
         for i in [1, 2, 3, 4, 5, 6, 7] {
             assert!(h.contains(&i));
@@ -131,5 +134,13 @@ mod tests {
         for i in [-2, -1, 0, 8, 9, 10] {
             assert!(!h.contains(&i));
         }
+    }
+
+    #[test]
+    fn test_repeated_element() {
+        let mut h = BinaryTree::new();
+        h.insert(1).unwrap();
+        h.insert(2).unwrap();
+        assert_eq!(h.insert(2).unwrap_err(), 2);
     }
 }
